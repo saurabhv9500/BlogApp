@@ -1,22 +1,21 @@
-import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
-
-export const protect = async (req, res, next) => {
-  let token;
-
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-    try {
-      token = req.headers.authorization.split(' ')[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret_key');
-      
-      req.user = await User.findById(decoded.id).select('-password');
-      next();
-    } catch (error) {
-      return res.status(401).json({ message: 'Not authorized, token validation failed' });
-    }
+export const protect = (req, res, next) => {
+  // Check if session contains valid authenticated user details
+  if (req.session && req.session.userId) {
+    // Inject user identity into req object for downstream handlers.
+    // NOTE: postRoutes.js reads req.user._id, so we expose it in that shape
+    // (previously this only set req.userId / req.username, which caused
+    // "Cannot read properties of undefined" on every create/update/delete).
+    req.user = {
+      _id: req.session.userId,
+      username: req.session.username
+    };
+    req.userId = req.session.userId;
+    req.username = req.session.username;
+    return next();
   }
 
-  if (!token) {
-    return res.status(401).json({ message: 'Not authorized, no security token provided' });
-  }
+  // Reject access if session does not exist or has expired
+  return res.status(401).json({
+    message: "Not authorized, session expired or non-existent. Please log in."
+  });
 };

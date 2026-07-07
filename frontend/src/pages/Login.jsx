@@ -6,41 +6,78 @@ import { AuthContext } from '../App';
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const { user, login } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  // If already logged in, automatically push them away from the login page
   useEffect(() => {
-    if (user) {
-      navigate('/');
-    }
+    if (user) navigate('/');
   }, [user, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    setSubmitting(true);
     try {
-      const res = await axios.post('http://localhost:5000/api/auth/login', { email, password });
-      if (res.data && res.data.token) {
-        login(res.data);
-        // Small timeout ensures local storage state registers before switching pages
-        setTimeout(() => {
-          navigate('/');
-        }, 100);
-      }
+      // FIX: the backend authenticates via server-side session (cookie), not a
+      // JWT — it never returns res.data.token, so the old `if (res.data.token)`
+      // check was always false and login() never fired. We now trust the
+      // session cookie and just use the returned user object directly.
+      const res = await axios.post('/api/auth/login', { email, password });
+      login(res.data.user);
+      navigate('/');
     } catch (err) {
-      alert(err.response?.data?.message || 'Invalid Login Credentials provided.');
+      setError(err.response?.data?.message || 'Invalid login credentials.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
-    <div style={{ maxWidth: '400px', margin: '50px auto', background: '#fff', padding: '30px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-      <h2 style={{ textAlign: 'center' }}>Account Login</h2>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
-        <input type="email" placeholder="Email Address" value={email} onChange={(e) => setEmail(e.target.value)} required style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ddd' }} />
-        <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ddd' }} />
-        <button type="submit" style={{ background: '#6c5ce7', color: '#fff', padding: '10px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Sign In</button>
+    <div className="max-w-md mx-auto pt-10">
+      <p className="font-sans text-xs tracking-[0.2em] uppercase text-gold mb-3 text-center">Reader Access</p>
+      <h1 className="font-display text-4xl text-ink dark:text-ink-dark text-center mb-8">Sign In</h1>
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {error && (
+          <p className="font-sans text-sm text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 rounded-sm px-4 py-2">
+            {error}
+          </p>
+        )}
+        <div>
+          <label className="block font-sans text-xs uppercase tracking-wide text-ink-soft dark:text-ink-dark/70 mb-1.5">Email address</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="w-full px-4 py-3 rounded-sm border border-line dark:border-line-dark bg-transparent text-ink dark:text-ink-dark font-serif focus:outline-none focus:border-accent dark:focus:border-accent-dark transition-colors"
+          />
+        </div>
+        <div>
+          <label className="block font-sans text-xs uppercase tracking-wide text-ink-soft dark:text-ink-dark/70 mb-1.5">Password</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="w-full px-4 py-3 rounded-sm border border-line dark:border-line-dark bg-transparent text-ink dark:text-ink-dark font-serif focus:outline-none focus:border-accent dark:focus:border-accent-dark transition-colors"
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={submitting}
+          className="w-full font-sans font-medium text-paper dark:text-paper-dark bg-ink dark:bg-ink-dark py-3 rounded-sm hover:opacity-85 transition-opacity disabled:opacity-50 cursor-pointer"
+        >
+          {submitting ? 'Signing in…' : 'Sign In'}
+        </button>
       </form>
-      <p style={{ marginTop: '15px', textAlign: 'center', fontSize: '0.9rem' }}>Don't have an account? <Link to="/register" style={{ color: '#6c5ce7' }}>Register here</Link></p>
+
+      <p className="mt-6 text-center font-sans text-sm text-ink-soft dark:text-ink-dark/70">
+        Don't have an account?{' '}
+        <Link to="/register" className="text-accent dark:text-accent-dark font-medium">Subscribe here</Link>
+      </p>
     </div>
   );
 }

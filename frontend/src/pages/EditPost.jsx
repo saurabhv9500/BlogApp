@@ -1,25 +1,29 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Editor, EditorProvider } from 'react-simple-wysiwyg';
-import { AuthContext } from '../App';
 
 export default function EditPost() {
   const { id } = useParams();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [image, setImage] = useState(null);
-  const { user } = useContext(AuthContext);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchPost = async () => {
       try {
-        const res = await axios.get(`http://localhost:5000/api/posts/${id}`);
+        const res = await axios.get(`/api/posts/${id}`);
         setTitle(res.data.title);
         setContent(res.data.content);
       } catch (err) {
         console.error(err);
+        setError('Could not load this post.');
+      } finally {
+        setLoading(false);
       }
     };
     fetchPost();
@@ -27,49 +31,87 @@ export default function EditPost() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitting(true);
+    setError('');
+
     const formData = new FormData();
     formData.append('title', title);
     formData.append('content', content);
     if (image) formData.append('image', image);
 
     try {
-      await axios.put(`http://localhost:5000/api/posts/${id}`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          Authorization: `Bearer ${user.token}`
-        }
+      // FIX: removed the Authorization: Bearer ${user.token} header — this app
+      // authenticates via the session cookie (axios.defaults.withCredentials
+      // is set globally), so `user.token` never existed and the header did
+      // nothing but sit there unused.
+      await axios.put(`/api/posts/${id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
       navigate(`/posts/${id}`);
     } catch (err) {
-      alert(err.response?.data?.message || 'Error processing update payload');
+      setError(err.response?.data?.message || 'Error updating post.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
+  if (loading) {
+    return <p className="font-serif text-ink-soft dark:text-ink-dark/70 text-center py-20">Loading draft…</p>;
+  }
+
   return (
-    <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', marginTop: '20px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-      <h2>Edit Blog Post</h2>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '20px' }}>
-        <input 
-          type="text" 
-          placeholder="Post Title" 
-          value={title} 
-          onChange={(e) => setTitle(e.target.value)} 
-          required 
-          style={{ padding: '12px', fontSize: '1rem', borderRadius: '4px', border: '1px solid #ddd' }} 
-        />
+    <div className="max-w-2xl mx-auto">
+      <p className="font-sans text-xs tracking-[0.2em] uppercase text-gold mb-3">Revise</p>
+      <h1 className="font-display text-4xl text-ink dark:text-ink-dark mb-8">Edit Entry</h1>
+
+      {error && (
+        <p className="font-sans text-sm text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 rounded-sm px-4 py-2 mb-6">
+          {error}
+        </p>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>Change Cover Image (Optional)</label>
-          <input type="file" onChange={(e) => setImage(e.target.files[0])} accept="image/*" />
+          <label className="block font-sans text-xs uppercase tracking-wide text-ink-soft dark:text-ink-dark/70 mb-1.5">Title</label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            required
+            className="w-full px-4 py-3 rounded-sm border border-line dark:border-line-dark bg-transparent text-ink dark:text-ink-dark font-display text-xl focus:outline-none focus:border-accent dark:focus:border-accent-dark transition-colors"
+          />
         </div>
+
         <div>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>Content Structure</label>
-          <div style={{ border: '1px solid #ddd', borderRadius: '4px', overflow: 'hidden' }}>
+          <label className="block font-sans text-xs uppercase tracking-wide text-ink-soft dark:text-ink-dark/70 mb-1.5">Replace cover image (optional)</label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setImage(e.target.files[0])}
+            className="font-sans text-sm text-ink-soft dark:text-ink-dark/70"
+          />
+        </div>
+
+        <div>
+          <label className="block font-sans text-xs uppercase tracking-wide text-ink-soft dark:text-ink-dark/70 mb-1.5">Content</label>
+          <div className="rounded-sm overflow-hidden border border-line dark:border-line-dark bg-white text-slate-900">
             <EditorProvider>
-              <Editor value={content} onChange={(e) => setContent(e.target.value)} containerProps={{ style: { minHeight: '250px' } }} />
+              <Editor
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                containerProps={{ style: { minHeight: '280px', border: '0' } }}
+              />
             </EditorProvider>
           </div>
         </div>
-        <button type="submit" style={{ background: '#f1c40f', color: '#fff', padding: '12px', fontSize: '1rem', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Update Post</button>
+
+        <button
+          type="submit"
+          disabled={submitting}
+          className="font-sans font-medium text-paper dark:text-paper-dark bg-ink dark:bg-ink-dark px-6 py-3 rounded-sm hover:opacity-85 transition-opacity disabled:opacity-50 cursor-pointer"
+        >
+          {submitting ? 'Saving…' : 'Save Changes'}
+        </button>
       </form>
     </div>
   );

@@ -56,7 +56,9 @@ router.get('/', async (req, res) => {
 // Get Single Post by ID
 router.get('/:id', async (req, res) => {
   try {
-    const post = await Post.findById(req.get('id') || req.params.id).populate('author', 'username');
+    // FIX: req.get('id') reads an HTTP header, not the route param — it was
+    // always undefined and only worked by accident via the || fallback.
+    const post = await Post.findById(req.params.id).populate('author', 'username');
     if (post) res.json(post);
     else res.status(404).json({ message: 'Post not found' });
   } catch (error) {

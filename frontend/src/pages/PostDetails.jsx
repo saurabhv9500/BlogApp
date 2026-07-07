@@ -6,53 +6,97 @@ import { AuthContext } from '../App';
 export default function PostDetails() {
   const { id } = useParams();
   const [post, setPost] = useState(null);
+  const [notFound, setNotFound] = useState(false);
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchPost = async () => {
       try {
-        const res = await axios.get(`http://localhost:5000/api/posts/${id}`);
+        const res = await axios.get(`/api/posts/${id}`);
         setPost(res.data);
       } catch (err) {
         console.error(err);
+        setNotFound(true);
       }
     };
     fetchPost();
   }, [id]);
 
   const handleDelete = async () => {
-    if (window.confirm('Are you absolutely sure you want to delete this blog post?')) {
-      try {
-        await axios.delete(`http://localhost:5000/api/posts/${id}`, {
-          headers: { Authorization: `Bearer ${user.token}` }
-        });
-        navigate('/');
-      } catch (err) {
-        alert(err.response?.data?.message || 'Error deleting post');
-      }
+    if (!window.confirm('Delete this post? This cannot be undone.')) return;
+    try {
+      // FIX: auth here is via the session cookie (axios.defaults.withCredentials
+      // is set globally in App.jsx) — the old Bearer header used `user.token`,
+      // which never existed under session-based auth, and was simply ignored
+      // by the backend. Removed the dead header.
+      await axios.delete(`/api/posts/${id}`);
+      navigate('/');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Error deleting post');
     }
   };
 
-  if (!post) return <h2 style={{ textAlign: 'center', marginTop: '5px' }}>Loading Blog Content...</h2>;
+  if (notFound) {
+    return (
+      <div className="text-center py-24">
+        <h1 className="font-display text-3xl text-ink dark:text-ink-dark mb-3">Post not found</h1>
+        <Link to="/" className="text-accent dark:text-accent-dark font-sans text-sm">← Back to the front page</Link>
+      </div>
+    );
+  }
+
+  if (!post) {
+    return <p className="font-serif text-ink-soft dark:text-ink-dark/70 text-center py-20">Loading…</p>;
+  }
+
+  // FIX: the logged-in user object is shaped { id, username } (see authRoutes.js),
+  // not { _id }. Comparing user._id against post.author._id was always
+  // undefined === value, so the Edit/Delete controls never appeared for the
+  // actual author.
+  const isAuthor = user && post.author && user.id === post.author._id;
 
   return (
-    <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', marginTop: '20px' }}>
-      <h1>{post.title}</h1>
-      <p style={{ color: '#777', margin: '10px 0 20px 0' }}>Published by: <strong>{post.author?.username}</strong></p>
-      
+    <article className="max-w-2xl mx-auto">
+      <p className="font-sans text-xs tracking-[0.2em] uppercase text-gold mb-4">
+        {new Date(post.createdAt).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
+      </p>
+      <h1 className="font-display text-4xl sm:text-5xl leading-tight text-ink dark:text-ink-dark mb-4">
+        {post.title}
+      </h1>
+      <p className="font-sans text-sm text-ink-soft dark:text-ink-dark/70 mb-8 pb-8 border-b border-line dark:border-line-dark">
+        By <span className="font-medium text-ink dark:text-ink-dark">{post.author?.username || 'Unknown'}</span>
+      </p>
+
       {post.image && (
-        <img src={`http://localhost:5000${post.image}`} alt={post.title} style={{ width: '100%', maxHeight: '450px', objectFit: 'cover', borderRadius: '8px', marginBottom: '20px' }} />
+        <img
+          src={`http://localhost:5000${post.image}`}
+          alt={post.title}
+          className="w-full max-h-[420px] object-cover rounded-sm mb-10"
+        />
       )}
 
-      <div dangerouslySetInnerHTML={{ __html: post.content }} style={{ lineHeight: '1.8', fontSize: '1.1rem' }} />
+      <div
+        className="article-body text-lg leading-8 text-ink dark:text-ink-dark [&_p]:mb-5"
+        dangerouslySetInnerHTML={{ __html: post.content }}
+      />
 
-      {user && user._id === post.author?._id && (
-        <div style={{ marginTop: '30px', display: 'flex', gap: '15px' }}>
-          <Link to={`/edit/${post._id}`} style={{ background: '#f1c40f', color: '#fff', padding: '10px 20px', borderRadius: '4px', fontWeight: 'bold' }}>Edit Post</Link>
-          <button onClick={handleDelete} style={{ background: '#e74c3c', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>Delete Post</button>
+      {isAuthor && (
+        <div className="mt-12 pt-6 border-t border-line dark:border-line-dark flex gap-4">
+          <Link
+            to={`/edit/${post._id}`}
+            className="font-sans text-sm font-medium text-ink dark:text-ink-dark border border-line dark:border-line-dark px-4 py-2 rounded-sm hover:border-accent dark:hover:border-accent-dark transition-colors"
+          >
+            Edit
+          </Link>
+          <button
+            onClick={handleDelete}
+            className="font-sans text-sm font-medium text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900/50 px-4 py-2 rounded-sm hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
+          >
+            Delete
+          </button>
         </div>
       )}
-    </div>
+    </article>
   );
 }
