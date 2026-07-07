@@ -26,18 +26,33 @@ const upload = multer({
   }
 });
 
+// Tags arrive as a comma-separated string from the form (e.g. "Machine, AGI").
+// Normalize into a clean array: trim whitespace, drop empties, dedupe.
+function parseTags(raw) {
+  if (!raw) return [];
+  return [...new Set(
+    raw.split(',').map((t) => t.trim()).filter(Boolean)
+  )];
+}
+
+// Author fields returned on every populate — keeps avatar available
+// wherever a post's author is shown (cards, post detail, etc).
+const AUTHOR_FIELDS = 'username avatar';
+
 // Create Post
 router.post('/', protect, upload.single('image'), async (req, res) => {
-  const { title, content } = req.body;
+  const { title, content, tags } = req.body;
   try {
     const post = new Post({
       title,
       content,
       image: req.file ? `/uploads/${req.file.filename}` : '',
+      tags: parseTags(tags),
       author: req.user._id
     });
     const createdPost = await post.save();
-    res.status(201).json(createdPost);
+    const populated = await createdPost.populate('author', AUTHOR_FIELDS);
+    res.status(201).json(populated);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -46,7 +61,7 @@ router.post('/', protect, upload.single('image'), async (req, res) => {
 // Get All Posts
 router.get('/', async (req, res) => {
   try {
-    const posts = await Post.find().populate('author', 'username').sort({ createdAt: -1 });
+    const posts = await Post.find().populate('author', AUTHOR_FIELDS).sort({ createdAt: -1 });
     res.json(posts);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -58,7 +73,7 @@ router.get('/:id', async (req, res) => {
   try {
     // FIX: req.get('id') reads an HTTP header, not the route param — it was
     // always undefined and only worked by accident via the || fallback.
-    const post = await Post.findById(req.params.id).populate('author', 'username');
+    const post = await Post.findById(req.params.id).populate('author', AUTHOR_FIELDS);
     if (post) res.json(post);
     else res.status(404).json({ message: 'Post not found' });
   } catch (error) {
@@ -68,7 +83,7 @@ router.get('/:id', async (req, res) => {
 
 // Update Post
 router.put('/:id', protect, upload.single('image'), async (req, res) => {
-  const { title, content } = req.body;
+  const { title, content, tags } = req.body;
   try {
     const post = await Post.findById(req.params.id);
     if (!post) return res.status(404).json({ message: 'Post not found' });
@@ -79,10 +94,12 @@ router.put('/:id', protect, upload.single('image'), async (req, res) => {
 
     post.title = title || post.title;
     post.content = content || post.content;
+    if (tags !== undefined) post.tags = parseTags(tags);
     if (req.file) post.image = `/uploads/${req.file.filename}`;
 
     const updatedPost = await post.save();
-    res.json(updatedPost);
+    const populated = await updatedPost.populate('author', AUTHOR_FIELDS);
+    res.json(populated);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

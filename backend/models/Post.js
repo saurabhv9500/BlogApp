@@ -14,6 +14,11 @@ const postSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  // NEW: tags for categorizing posts (shown as pills in the card grid)
+  tags: {
+    type: [String],
+    default: []
+  },
   author: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

@@ -8,6 +8,7 @@ export default function EditPost() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [image, setImage] = useState(null);
+  const [tags, setTags] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -19,6 +20,7 @@ export default function EditPost() {
         const res = await axios.get(`/api/posts/${id}`);
         setTitle(res.data.title);
         setContent(res.data.content);
+        setTags((res.data.tags || []).join(', '));
       } catch (err) {
         console.error(err);
         setError('Could not load this post.');
@@ -37,6 +39,7 @@ export default function EditPost() {
     const formData = new FormData();
     formData.append('title', title);
     formData.append('content', content);
+    formData.append('tags', tags);
     if (image) formData.append('image', image);
 
     try {
@@ -90,6 +93,18 @@ export default function EditPost() {
             onChange={(e) => setImage(e.target.files[0])}
             className="font-sans text-sm text-ink-soft dark:text-ink-dark/70"
           />
+        </div>
+
+        <div>
+          <label className="block font-sans text-xs uppercase tracking-wide text-ink-soft dark:text-ink-dark/70 mb-1.5">Tags</label>
+          <input
+            type="text"
+            placeholder="e.g. Machine, AGI, Life"
+            value={tags}
+            onChange={(e) => setTags(e.target.value)}
+            className="w-full px-4 py-3 rounded-sm border border-line dark:border-line-dark bg-transparent text-ink dark:text-ink-dark font-sans text-sm focus:outline-none focus:border-accent dark:focus:border-accent-dark transition-colors"
+          />
+          <p className="font-sans text-xs text-ink-soft dark:text-ink-dark/50 mt-1.5">Comma-separated.</p>
         </div>
 
         <div>

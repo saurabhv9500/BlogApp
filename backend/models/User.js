@@ -19,6 +19,11 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
     minlength: 6
+  },
+  // NEW: profile avatar, stored the same way post images are (uploads/ + static path)
+  avatar: {
+    type: String,
+    default: ''
   }
 }, {
   timestamps: true

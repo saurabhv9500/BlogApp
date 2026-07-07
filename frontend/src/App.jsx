@@ -9,6 +9,7 @@ import CreatePost from './pages/CreatePost';
 import EditPost from './pages/EditPost';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import Profile from './pages/Profile';
 
 // Global Axios configuration to allow backend session cookies to pass through automatically
 axios.defaults.baseURL = 'http://localhost:5000';
@@ -89,6 +90,14 @@ export default function App() {
                 element={
                   <RequireAuth user={user}>
                     <EditPost />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <RequireAuth user={user}>
+                    <Profile />
                   </RequireAuth>
                 }
               />

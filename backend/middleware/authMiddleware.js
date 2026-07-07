@@ -1,16 +1,12 @@
 export const protect = (req, res, next) => {
   // Check if session contains valid authenticated user details
   if (req.session && req.session.userId) {
-    // Inject user identity into req object for downstream handlers.
-    // NOTE: postRoutes.js reads req.user._id, so we expose it in that shape
-    // (previously this only set req.userId / req.username, which caused
-    // "Cannot read properties of undefined" on every create/update/delete).
+    // Inject the user onto req in the shape the rest of the app expects.
     req.user = {
       _id: req.session.userId,
-      username: req.session.username
+      username: req.session.username,
+      avatar: req.session.avatar || ''
     };
-    req.userId = req.session.userId;
-    req.username = req.session.username;
     return next();
   }
 

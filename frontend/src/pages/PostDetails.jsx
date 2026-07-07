@@ -2,6 +2,7 @@ import React, { useEffect, useState, useContext } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { AuthContext } from '../App';
+import { readTime, formatDate, colorForName, initials } from '../utils/text';
 
 export default function PostDetails() {
   const { id } = useParams();
@@ -58,15 +59,43 @@ export default function PostDetails() {
 
   return (
     <article className="max-w-2xl mx-auto">
-      <p className="font-sans text-xs tracking-[0.2em] uppercase text-gold mb-4">
-        {new Date(post.createdAt).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
-      </p>
+      <div className="flex items-center gap-2 font-sans text-xs uppercase tracking-wide text-gold mb-4">
+        {formatDate(post.createdAt)}
+        <span className="mx-0.5">—</span>
+        {readTime(post.content)}
+      </div>
       <h1 className="font-display text-4xl sm:text-5xl leading-tight text-ink dark:text-ink-dark mb-4">
         {post.title}
       </h1>
-      <p className="font-sans text-sm text-ink-soft dark:text-ink-dark/70 mb-8 pb-8 border-b border-line dark:border-line-dark">
-        By <span className="font-medium text-ink dark:text-ink-dark">{post.author?.username || 'Unknown'}</span>
-      </p>
+      <div className="flex items-center justify-between flex-wrap gap-4 mb-8 pb-8 border-b border-line dark:border-line-dark">
+        <div className="flex items-center gap-2.5 font-sans text-sm text-ink-soft dark:text-ink-dark/70">
+          {post.author?.avatar ? (
+            <img
+              src={`http://localhost:5000${post.author.avatar}`}
+              alt={post.author.username}
+              className="w-8 h-8 rounded-full object-cover"
+            />
+          ) : (
+            <span
+              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white"
+              style={{ backgroundColor: colorForName(post.author?.username) }}
+            >
+              {initials(post.author?.username || '?')}
+            </span>
+          )}
+          By <span className="font-medium text-ink dark:text-ink-dark">{post.author?.username || 'Unknown'}</span>
+        </div>
+
+        {post.tags?.length > 0 && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {post.tags.map((tag) => (
+              <span key={tag} className="text-xs px-2.5 py-1 rounded-full bg-tag dark:bg-tag-dark text-ink-soft dark:text-ink-soft-dark">
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
 
       {post.image && (
         <img

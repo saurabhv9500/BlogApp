@@ -12,16 +12,25 @@
   --font-serif: 'Source Serif 4', Georgia, serif;
   --font-sans: 'Inter', system-ui, sans-serif;
 
+  /* Light mode: warm paper editorial look */
   --color-paper: #eeece2;
-  --color-paper-dark: #15170f;
   --color-ink: #20241d;
   --color-ink-soft: #4b5245;
-  --color-ink-dark: #e7e6dc;
   --color-accent: #2f4b3c;
-  --color-accent-dark: #7fa88f;
   --color-gold: #a9822c;
   --color-line: #d7d2c2;
-  --color-line-dark: #2a2e23;
+  --color-card: #ffffff;
+  --color-tag: #e7e3d5;
+
+  /* Dark mode: navy card-grid look */
+  --color-paper-dark: #10141d;
+  --color-ink-dark: #e9ecf1;
+  --color-ink-soft-dark: #8d97a8;
+  --color-accent-dark: #3fbf8f;
+  --color-gold-dark: #c9a15a;
+  --color-line-dark: #232a3a;
+  --color-card-dark: #171c28;
+  --color-tag-dark: #212838;
 }
 
 body {
@@ -56,5 +65,43 @@ body {
 }
 
 .article-body img {
-  border-radius: 2px;
+  border-radius: 6px;
+}
+
+/* Soft abstract glow shapes behind the hero headline */
+.hero-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.hero-glow::before,
+.hero-glow::after {
+  content: '';
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(60px);
+  opacity: 0.12;
+}
+.hero-glow::before {
+  width: 420px;
+  height: 260px;
+  top: -40px;
+  left: 12%;
+  background: var(--color-ink);
+}
+.dark .hero-glow::before {
+  background: var(--color-accent-dark);
+  opacity: 0.18;
+}
+.hero-glow::after {
+  width: 360px;
+  height: 240px;
+  top: 20px;
+  right: 14%;
+  background: var(--color-gold);
+}
+.dark .hero-glow::after {
+  background: var(--color-ink-dark);
+  opacity: 0.08;
 }
